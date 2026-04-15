@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import com.company.challenge.poc2.entity.EventRecord;
 import com.company.challenge.poc2.repository.EventRepository;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -32,10 +34,12 @@ public class RecordStreamDispatcher implements CommandLineRunner {
     private String filePath;
 
     private final EventRepository eventRepository;
+    private final ConfigurableApplicationContext context;
     private final AtomicInteger dispatched = new AtomicInteger(0);
 
-    public RecordStreamDispatcher(EventRepository eventRepository) {
+    public RecordStreamDispatcher(EventRepository eventRepository, ConfigurableApplicationContext context) {
         this.eventRepository = eventRepository;
+        this.context = context;
     }
 
     @Override
@@ -49,24 +53,37 @@ public class RecordStreamDispatcher implements CommandLineRunner {
         streamLines(source)
                 .subscribeOn(Schedulers.boundedElastic())
                 // 1. Controllo del rate (Throttling)
-                .zipWith(Flux.interval(Duration.ofMillis(tickIntervalMs))) // Genera un flusso di intervalli di tempo e lo abbina al flusso di righe, in modo che vengano processate una ogni tickIntervalMs
+                .zipWith(Flux.interval(Duration.ofMillis(tickIntervalMs))) // Genera un flusso di intervalli di tempo e
+                                                                           // lo abbina al flusso di righe, in modo che
+                                                                           // vengano processate una ogni tickIntervalMs
                 .map(tuple -> tuple.getT1()) // Prende solo il primo elemento della coppia (la riga)
                 // 2. Arricchimento (Simula chiamata a servizio esterno)
                 .flatMap(this::enrichFromApiCall)
-                // 3. Salvataggio su Database 
+                // 3. Salvataggio su Database
                 .flatMap(this::saveToDb)
                 .doOnNext(out -> log.debug("Processato e salvato: {}", out))
-                .doOnComplete(() -> log.info("Dispatcher terminato - totale: {}", dispatched.get()))
-                .doOnError(e -> log.error("Errore nella pipeline: ", e))
+                .doOnComplete(() -> {
+                    log.info("Dispatcher terminato - totale: {}", dispatched.get());
+                    shutdown(0);
+                })
+                .doOnError(e -> {
+                    log.error("Errore nella pipeline: ", e);
+                    shutdown(1);
+                })
                 .subscribe();
+    }
+
+    private void shutdown(int exitCode) {
+        log.info("Avvio arresto dell'applicazione con codice: {}", exitCode);
+        // Shutdown del contesto Spring schedulato async perchè blocking
+        Schedulers.boundedElastic().schedule(() -> SpringApplication.exit(context, () -> exitCode));
     }
 
     private Flux<String> streamLines(String source) {
         return Flux.using(
                 () -> Files.lines(Paths.get(source)),
                 Flux::fromStream,
-                java.util.stream.BaseStream::close
-        );
+                java.util.stream.BaseStream::close);
     }
 
     private Mono<String> enrichFromApiCall(String record) {
