@@ -1,0 +1,25 @@
+server:
+  port: 8080
+
+spring:
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password: 
+  h2:
+    console:
+      enabled: true 
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+
+app:
+  # 50 richieste al secondo = 1 richiesta ogni 20ms
+  rate-limit-ms: 20
+  file-path: "src/main/resources/large_logfile.log"
+
+logging:
+  level:
+    root: INFO
+    com.company.challenge.poc2: DEBUG
