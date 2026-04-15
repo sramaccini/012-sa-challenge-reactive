@@ -5,9 +5,11 @@ Questo repository contiene il PoC richiesto nel Test 1 della challenge.
 ## Stack Tecnologico 
 Per risolvere i vincoli richiesti, ho scelto Java 21 con Spring Boot 3.5 e il framework Project Reactor. In realtà avrei voluto usare Go come linguaggio per questo PoC ma non ho ancora una padronanza sufficiente del linguaggio (Go è nel mio radar tecnologico e lo approfondirò a breve). L'alternativa in Java sarebbe stata sfruttare i virtual threads in combinazione con resilience4j per gestire il rate limiting e la backpressure, ma ho preferito l'approccio reattivo in quanto più adatto a gestire flussi di dati asincroni.
 
-Paradigma Reactive (Non-blocking I/O): A differenza dell'approccio tradizionale, il paradigma reattivo permette di gestire flussi di dati asincroni.
+- ### Paradigma Reactive (Non-blocking I/O):
+ A differenza dell'approccio tradizionale, il paradigma reattivo permette di gestire flussi di dati asincroni.
 
-Backpressure: Grazie a Project Reactor, la pipeline implementa nativamente la backpressure. Se l'API esterna o il database rallentano, il sistema non accumula dati in memoria, ma segnala alla sorgente di rallentare la lettura.
+- ### Backpressure: 
+Grazie a Project Reactor, la pipeline implementa nativamente la backpressure. Se l'API esterna o il database rallentano, il sistema non accumula dati in memoria, ma segnala alla sorgente di rallentare la lettura.
 
 
 ## Gestione dei Vincoli Architetturali
